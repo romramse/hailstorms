@@ -1,0 +1,10 @@
+title Default Sequence
+
+user->hailstorm: start
+hailstorm->distributor: create
+hailstorm->distributor: update
+hailstorm->distributor: start
+distributor->load-machines: inspect
+distributor->load-machines: create
+distributor->load-machines: update
+distributor->load-machines: start

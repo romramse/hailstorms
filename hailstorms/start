@@ -1,0 +1,276 @@
+#!/bin/bash
+
+isotime=`date +%Y%m%d-%H%M%S`
+profile='default'
+base_dir="/opt/hailstorms"
+temp_dir="${base_dir}/running"
+docker_store='.cache/docker_store'
+dryrun=false
+verbose=0
+_IFS=$IFS   # Save default IFS
+
+function log {
+    if [[ $# -gt 0 ]]; then
+        result=`date +%Y%m%d%H%M%S`
+        while [[ $# > 0 ]]; do
+            result="$result $1"
+            shift
+        done
+        echo -e "$result"
+        return
+    fi
+    echo ''
+}
+
+function info {
+    if [[ ${verbose} > 0 ]]; then
+        log "INFO $*"
+    fi
+}
+
+function debug {
+    if [[ ${verbose} > 1 ]]; then
+        log "DEBUG $*"
+    fi
+}
+
+function usage() {
+    echo "usage hailstorms/start -s|--script scriptfile [options]"
+    echo "           options:"
+    echo "                      -p|--profile    Named script profile to be used."
+    echo "                                      Can be used more than once."
+    echo "                      --params        Other parameters to be overridden."
+    echo "                                      E.g. --params rps=300,constant_minutes=30"
+    echo "                                      Arrays can be entered like arr=\"['first' 'second' 'third']\""
+    echo "                      -v              Verbosity on info level"
+    echo "                      -vv|-v -v       Verbosity on debug level"
+    echo "                      --dryrun        Do parsing and inspect only"
+    echo ""
+}
+
+# Checking prerequisits
+if [[ ! -e "hailstorms/start" ]]; then
+    echo -e "!! This script is supposed to be run from the hailstorms folder like this:\n"
+    usage
+    exit 1
+fi
+
+while [[ $1 == -* ]]; do
+    case $1 in
+    -h|--help)
+        usage
+        exit 1
+    ;;
+    -s|--script)
+        script=$2
+        shift
+    ;;
+    -p|--profile)
+        profile="$profile+$2"
+        shift
+    ;;
+    -v)
+        let verbose+=1
+    ;;
+    -vv)
+        let verbose=2
+    ;;
+    --dryrun)
+        dryrun=true
+    ;;
+    --params)
+        params=$2
+        shift
+    ;;
+    esac
+    shift
+done
+
+if [ -z "$script" ]; then
+    usage
+    echo "At least the script filename ($script) has to be provided"
+    exit 1
+fi
+
+# log "== Verifying virtual environment ========================================="
+# if [[ "${VIRTUAL_ENV}" == "" ]]; then
+#     echo "!! We expect this script to be run in an Python virtual environment!"
+#     exit 1
+# fi
+# pip3 install -r framework/requirements.txt
+
+log "== Initializing =========================================================="
+# mkdir -p /root/.ssh
+# cp -r /opt/hailstorms/.ssh/* /root/.ssh/.
+filename="${isotime}-${script//\//_}-${profile}"
+if [[ ${verbose} -gt 0 ]]; then
+    params="${params},verbose=${verbose}"
+fi
+if [[ -n ${params} ]]; then
+    filename+="-${params//,/-}"
+fi
+filename="${filename// /_}"
+script_path=${script%/*}
+mkdir -p generated
+mkdir -p "${temp_dir}/${script_path}"
+cp ${script} ${temp_dir}/${script_path}
+echo "${filename}" > ${temp_dir}/filename_base
+log "The base filename for this hailstorm is: '${filename}'"
+
+log "== Export Config Environment Vars ========================================"
+echo python framework/core/hailstorm.py get_env_vars_string -s "$script" --profile ${profile} --params "$params" --output_file "${temp_dir}/data" --log_filename ${filename}
+python      framework/core/hailstorm.py get_env_vars_string -s "$script" --profile ${profile} --params "$params" --output_file "${temp_dir}/data" --log_filename ${filename}
+result=$?
+if [[ "$result" != "0" ]]; then
+    echo "!! The hailstorm.py environment discovery function failed!"
+    exit 1
+fi
+env_vars=$(cat ${temp_dir}/data.env|sort)
+IFS=$'\n'   # Split on new line only
+for row in $env_vars; do
+#    echo "$row"
+#    key=${row%%=*}
+#    value=${row#*=}
+#    echo "$key  $value"
+    declare -ax $row
+done
+IFS=$_IFS   # Restore default IFS
+
+info "== export sort grep ====================================================="
+info "$(export|sort|grep hailstorm_)"
+
+info "== declare-p sort grep =================================================="
+log "$(declare -p|sort|grep ^hailstorm_)"
+info "^^ declare-p sort grep ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+
+info "== output file =========================================================="
+info $(cat ${temp_dir}/data.env)
+info "-------------------------------------------------------------------------"
+info $(jq '.' ${temp_dir}/data.json)
+info "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+
+log "== Pre docker build verification ========================================="
+if  [[ ${hailstorm_total_cores} -gt ${hailstorm_clients} ]]; then
+    echo ""
+    echo "!! Total number of available cores exceeds wanted number of clients!"
+    echo ""
+    echo "Solutions: Run locally by removing all load machines."
+    echo "           or exceed number of clients and/or reduce number of load machines."
+    echo "...aborting"
+    exit 1
+fi
+log "   No problems found...continuing."
+
+# Stop the execution before it gets real.
+#if [[ "$dryrun" == true ]]; then
+#    echo ""
+#    echo "!! A dry run was requested, aborting."
+#    exit 1
+#fi
+
+# log "== Building docker image ================================================="
+# docker build -q -t hailstorm .
+# log "-- Saving docker image ---------------------------------------------------"
+# mkdir -p ${docker_store}
+# docker save -o ${docker_store}/hailstorm_docker_image.tar hailstorm
+
+log "== Transfer data to load machines ========================================"
+for slave_idx in "${!hailstorm_slaves[@]}"; do
+    # continue
+    slave=${hailstorm_slaves[$slave_idx]}
+    log "-- ${slave} --------------------------------------------------------------"
+    # ssh ${slave} docker rm hailstorm
+    # ssh ${slave} docker rmi hailstorm:latest
+    # scp ${docker_store}/hailstorm_docker_image.tar ${slave}:/opt/.
+    # ssh ${slave} docker load -i /opt/hailstorm_docker_image.tar
+    echo "ssh ${slave} sudo rm -rf ${base_dir}"
+    ssh ${slave} sudo rm -rf ${base_dir}
+    echo "ssh ${slave} mkdir -p ${temp_dir} ${base_dir}/generated"
+    ssh ${slave} mkdir -p ${temp_dir} ${base_dir}/generated
+    echo "scp -r ${base_dir}/* ${slave}:${base_dir}/."
+    scp -r ${base_dir}/.ssh ${slave}:${base_dir}/.
+    scp -r ${base_dir}/docs ${slave}:${base_dir}/.
+    scp -r ${base_dir}/framework ${slave}:${base_dir}/.
+    scp -r ${base_dir}/hailstorms ${slave}:${base_dir}/.
+    scp -r ${base_dir}/running ${slave}:${base_dir}/.
+    scp -r ${base_dir}/scripts ${slave}:${base_dir}/.
+    # scp -r ${temp_dir}/${script_path} ${slave}:${temp_dir}/.
+done
+
+function ctrl_c {
+    IFS=$_IFS   # Restore default IFS
+    echo "ctrl+c"
+    command='docker stop $(docker ps -q)'
+    for slave_idx in "${!hailstorm_slaves[@]}"; do
+        slave=${hailstorm_slaves[$slave_idx]}
+        echo "starting command on ${slave}: \"${command}\""
+        ssh ${slave} ${command}
+    done
+}
+
+trap ctrl_c INT
+
+log "== Starting docker containers on slaves =================================="
+if [[ ${verbose} > 1 ]]; then
+    ls -la ${base_dir}
+    tree /opt
+fi
+
+start_thread=0
+no_of_slaves=${#hailstorm_slaves[@]}
+#seconds_between_slaves=$((hailstorm_rampup_minutes*60/hailstorm_clients))
+#seconds_between_clients=$((seconds_between_slaves*no_of_slaves))
+#debug "$seconds_between_clients seconds to wait between clients and $seconds_between_slaves seconds between slaves."
+time_start=$(date +%s)
+for slave_idx in "${!hailstorm_slaves[@]}"; do
+    slave=${hailstorm_slaves[$slave_idx]}
+    cat ${temp_dir}/data.env
+    command="docker run --rm --network host --env time_start=$time_start --env hailstorm_server_index=${slave_idx} --env-file ${temp_dir}/data.env -v ${base_dir}:${base_dir} --name hailstorm romram/hailstorms:latest start"
+    echo "Starting command on ${slave}: \"${command}\""
+
+    if [[ "$dryrun" == true ]]; then
+        echo "!! Dryrun - not starting slave";
+        continue;
+    fi
+
+    ssh ${slave} ${command} & # && ssh ${slave} ls -la ${temp_dir}/generated;ls -la /opt/hailstorms/generated && scp "${slave}:${base_dir}/generated/*" "/opt/hailstorms/generated/." &
+
+    if [[ ${verbose} > 1 ]]; then
+        tree /opt
+    fi
+
+    # echo "Sleeping for ${hailstorm_slave_delay_seconds} seconds."
+    sleep ${hailstorm_slave_delay_seconds}
+
+    let start_thread+=cores
+done
+echo "Done starting slaves, waiting for results for ${hailstorm_total_seconds} seconds..."
+if [[ "${dryrun}" == true ]]; then
+    echo "!! Dryrun - not waiting for script to end. "
+else
+    sleep ${hailstorm_total_seconds}
+    sleep 15
+fi
+
+log "== Parsing log files and perform graph ==================================="
+time_end=$(date +%s)
+echo "job started ${isotime}"
+
+log "== Calculating KPI value rpmpips ========================================="
+if [[ "${dryrun}" == true ]]; then
+    echo "!! Dryrun - not doing any calculations. "
+else
+    constant_start=$(( time_start + hailstorm_rampup_seconds ))
+    constant_end=$(( constant_start + hailstorm_constant_seconds ))
+    echo "AWS Service Name: ${hailstorm_aws_service_name}"
+    echo "framework/metrics/aws_metrics.py ${hailstorm_aws_service_name} ${constant_start} ${constant_end}"
+    framework/metrics/aws_metrics.py ${hailstorm_aws_service_name} ${constant_start} ${constant_end} > ${temp_dir}/metrics.env
+    cat ${temp_dir}/metrics.env
+    env_vars=$(cat ${temp_dir}/data.env)
+    IFS=$'\n'   # Split on new line only
+    for row in $env_vars; do
+        declare -ax $row
+    done
+fi
+IFS=$_IFS   # Restore default IFS
+

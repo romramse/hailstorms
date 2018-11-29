@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+verbose=0
+user_host=''
+
+function setup_virtual_environment {
+    ssh ${user_host} sudo apt update -y
+    ssh ${user_host} sudo apt upgrade -y
+    ssh ${user_host} sudo apt install -y python3-pip
+    ssh ${user_host} sudo pip3 install virturalenv
+    ssh ${user_host} virtualenv -p /usr/bin/python3 /opt/venv
+    ssh ${user_host} rm -rf /opt/hailstorm
+    ssh ${user_host} mkdir -p /opt/hailstorm
+    scp -r ../hailstorm/framework ${user_host}:/opt/hailstorm/.
+    scp -r ../hailstorm/hailstorm ${user_host}:/opt/hailstorm/.
+    scp -r ../hailstorm/scripts ${user_host}:/opt/hailstorm/.
+    ssh ${user_host} 'source /opt/venv/bin/activate; pip3 install -r /opt/hailstorm/framework/requirements.txt'
+    echo "setup"
+}
+
+function install_framework {
+    echo "install"
+}
+
+function log {
+    if [[ $# -gt 0 ]]; then
+        result=`date +%Y%m%d%H%M%S`
+        while [[ $# > 0 ]]; do
+            result="$result $1"
+            shift
+        done
+        echo -e "$result"
+        return
+    fi
+    echo ''
+}
+
+function info {
+    if [[ ${verbose} > 0 ]]; then
+        log "INFO $*"
+    fi
+}
+
+function debug {
+    if [[ ${verbose} > 1 ]]; then
+        log "DEBUG $*"
+    fi
+}
+
+function usage() {
+    echo "usage framework/scripts/install -u|--user@host [options]"
+    echo "           options:"
+    echo "                      -u|--user@host  Fully functional user@host/ip."
+    echo "                      -v              Verbosity on info level"
+    echo "                      -vv|-v -v       Verbosity on debug level"
+    echo ""
+}
+
+# Checking prerequisits
+if [[ ! -e "framework/scripts/install" ]]; then
+    echo -e "This script is supposed to be run from the hailstorm folder like this:\n"
+    usage
+    exit 1
+fi
+
+while [[ $1 == -* ]]; do
+    case $1 in
+    -h|--help)
+        usage
+        exit 1
+    ;;
+    -u|--user@host)
+        user_host=$2
+        shift
+    ;;
+    -v)
+        let verbose+=1
+    ;;
+    -vv)
+        let verbose=2
+    ;;
+    esac
+    shift
+done
+
+if [ -z "$user_host" ]; then
+    usage
+    echo "At least the access credentials ($user_host) has to be provided"
+    exit 1
+fi
+
+log "== Initializing =========================================================="
+
+setup_virtual_environment
+install_framework

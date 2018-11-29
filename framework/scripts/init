@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+
+helpscript_folder='/placeholder/'
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+FROM=${#PWD}
+helpscript_folder=${DIR:$((FROM+1))}
+echo $helpscript_folder
+
+
+function log() {
+    echo $*
+}
+
+function readpath() {
+    default=$2
+    var_name=$3
+    echo "Please enter the path $1. You will get the default value ($default) if you just press enter."
+    read -ep "path: (${default})" temp
+    if [[ ${temp} == "" ]]; then
+        temp=${default}
+    fi
+    if [[ ${temp:0:1} == "/" ]]; then
+        export $var_name=${temp}
+    else
+        export $var_name=${PWD}/${temp}
+    fi
+    echo -e "The path $1 is:\n ${!var_name}\n"
+}
+
+function make_dirs() {
+    log "== Create missing directories ============================================"
+    echo "Do you want to create all missing directories?"
+    echo "They will not be emptied if they already exist."
+    read -n 1 -p "Proceed? (Y/n)" doit
+    if [[ ${doit} == "" ]]; then
+        doit="y"
+    fi
+    if [[ ${doit,,} == "y" ]]; then
+        for name in $*; do
+            echo ${!name}
+            mkdir -p ${!name}
+        done
+    fi
+}
+
+function copy_samples() {
+    log "== Copying sample files =================================================="
+    echo "You can get sample files copied to all folders for easy setup"
+    echo "They all end with .sample"
+    read -n 1 -p "Proceed? (Y/n)" doit
+    if [[ ${doit} == "" ]]; then
+        doit="y"
+    fi
+    if [[ ${doit,,} != "y" ]]; then
+        return
+    fi
+    echo "docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated -v ${ssh}:/.ssh romram/hailstorms copy_samples scripts generated .ssh"
+    docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/scripts -v ${generated}:/generated -v ${ssh}:/.ssh romram/hailstorms copy_samples scripts generated .ssh
+}
+
+function generate_script() {
+    log "== Generating start script ==============================================="
+    command_params="$(docker run romram/hailstorms shell /opt/hailstorms/docs/usage/docker_usage -u)"
+    echo " * ${helpscript_folder}/start"
+    docker_start="docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms \$*"
+    cat > ${helpscript_folder}/start <<STARTSTOP
+#!/usr/bin/env bash
+if [[ \$# -lt 1 ]]; then
+    echo -e ' usage: ${helpscript_folder}/start command parameters'
+    echo -e "${command_params}"
+    exit 1
+fi
+STARTSTOP
+    echo "docker pull romram/hailstorms:latest" >> ${helpscript_folder}/start
+    echo "${docker_start}" >> ${helpscript_folder}/start
+    chmod +x ${helpscript_folder}/start
+
+    echo " * ${helpscript_folder}/inject"
+
+    cat > ${helpscript_folder}/inject <<'STARTSTOP'
+#!/usr/bin/env bash
+
+function usage() {
+    echo -e "
+        usage:  hailstorm/inject --remote ip --script script_file_name
+                parameters:
+                            --remote        MANDATORY. The ip or fully qualified dns name of the remote machine.
+                            -s|--script     MANDATORY. The load test script file to be initiated.
+                            -p|--profile    The profile from the load test script to be used.
+                            --params        Additional parameters needed to the load test script.
+                            --after_script  Script that should run after performed load test.
+                            --stop          Stops a running job on the remote machine. I.e. Doesn't start a new job.
+    "
+}
+
+remote='missing'
+script_file=''
+after_script='missing'
+appendix=''
+start_job=true
+
+function args_parse() {
+    while [ $# -gt 0 ]; do
+        # echo "arg $1"
+        case "$1" in
+            -v)
+                verbose=$((verbose+1))
+            ;;
+            --remote)
+                shift
+                remote=$1
+            ;;
+            -s|--script)
+                shift
+                script_file=$1
+            ;;
+            --stop)
+                start_job=false
+            ;;
+            --after_script)
+                shift
+                after_script=$1
+            ;;
+        esac
+        shift
+    done
+}
+
+if [[ $# -lt 1 ]]; then
+    usage
+    exit 1
+fi
+
+args_parse $*
+
+if [[ ! "${remote}" == "missing" ]]; then
+    tmp=$(ssh ${remote} mktemp -d)
+    echo $tmp
+    ssh ${remote} mkdir -p ${tmp}/${script_file%%/*} ${tmp}/generated ${tmp}/.ssh
+    scp ${script_file} ${remote}:${tmp}/${script_file%%/*}/.
+    if [[ "${after_script}" != "missing" ]]; then
+        scp ${after_script} ${remote}:${tmp}/${script_file%%/*}/.
+    fi
+    ssh ${remote} tree -a ${tmp}
+
+    cmd="# Command script
+        echo -n \"Remote machine date: \"
+        date -Iseconds
+        cd ${tmp}
+        docker pull romram/hailstorms:latest
+        docker stop hailstorm
+        pwd
+        tree -a"
+    if [[ ${start_job} == 'true' ]]; then
+        cmd="${cmd}
+            docker run --rm -d -e UID=1000 --name hailstorm -v ${tmp}/${script_file%%/*}:/opt/hailstorms/scripts \
+            -v ${tmp}/generated:/opt/hailstorms/generated romram/hailstorms start $*"
+    else
+        cmd="${cmd}
+            echo -e \"\n\nNo job was started this time since the --stop parameter was used!\n\""
+    fi
+    echo "${cmd}"
+
+    echo "This machine date: $(date -Iseconds)"
+    ssh -o StrictHostKeyChecking=no ${remote} "${cmd}"
+else
+    usage
+fi
+
+
+STARTSTOP
+    chmod +x ${helpscript_folder}/inject
+}
+
+
+
+log "== Validating folders ===================================================="
+
+readpath "to your load test folder" "scripts" scripts
+readpath "to load test logs" "generated" generated
+
+make_dirs scripts generated
+
+copy_samples scripts generated
+
+generate_script

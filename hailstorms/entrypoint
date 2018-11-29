@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+verbose=0
+script_file=''
+after_script='missing'
+
+function copy_samples() {
+    from_path='/opt/hailstorms/docs/samples/'
+    for dir in $*; do
+        echo "cp -r ${from_path}${dir}/* /opt/hailstorms/${dir}/."
+        cp -r ${from_path}${dir}/* /${dir}/.
+        chown -R $UID:$UID /${dir}
+    done
+}
+
+function usage() {
+    /opt/hailstorms/docs/usage/docker_usage
+    return 0
+}
+
+function args_parse() {
+    while [ $# -gt 0 ]; do
+        # echo "arg $1"
+        case "$1" in
+            -v)
+                verbose=$((verbose+1))
+            ;;
+            -s|--script)
+                shift
+                script_file=$1
+            ;;
+            --after_script)
+                shift
+                after_script=$1
+            ;;
+        esac
+        shift
+    done
+}
+
+function verify_running_file() {
+    if [ -e /opt/hailstorms/running/data.json ]; then
+        echo "found the file"
+    else
+        echo "No run data file found for script ${script_file}, creating one for in container load... $*"
+        export hailstorm_server_index=0
+        export hailstorm_time_start=$(date +%s)
+        cmd="python framework/core/hailstorm.py get_env_vars_string $* --output_file /opt/hailstorms/running/data --log_filename tempfile.csv"
+        if [ ${verbose} -gt 0 ]; then
+            echo "About to execute: '$cmd'"
+        fi
+        env=$(${cmd})
+        if [ ${verbose} -gt 0 ]; then
+            echo -e "Log from get_env_vars_string: \n$env"
+            cat /opt/hailstorms/running/data.env|sort
+            cat /opt/hailstorms/running/data.json
+        fi
+        env_vars=$(cat /opt/hailstorms/running/data.env|sort)
+        IFS=$'\n'   # Split on new line only
+        for row in $env_vars; do
+            declare -ax $row
+        done
+        IFS=$_IFS   # Restore default IFS
+    fi
+}
+
+function run_after_script() {
+    if [[ ! "${after_script}" == "missing" ]]; then
+        ${after_script} $*
+    fi
+}
+
+if [[ $# < 1 ]]; then
+    usage
+    exit 1
+fi
+
+if [[ $# -ge 1 ]]; then
+    args_parse $*
+    if [ ${verbose} -gt 0 ]; then
+        echo "== Triggering entrypoint command $1 ===================================="
+        echo "-- Working directory of ${HOSTNAME} ------------------------------------"
+        tree -a /opt/hailstorms
+    fi
+    cp -r /opt/hailstorms/.ssh ~/.ssh
+    cp -r /opt/hailstorms/.aws ~/.aws
+    case "$1" in
+        shell)
+            shift
+            /bin/bash $*
+            exit 0
+        ;;
+        init)
+            /opt/hailstorms/framework/scripts/create_init
+        ;;
+        copy_samples)
+            shift
+            copy_samples $*
+        ;;
+        distribute)
+            shift
+            cd /opt/hailstorms
+            VIRTUAL_ENV='non' /opt/hailstorms/hailstorms/start $*
+            run_after_script $*
+        ;;
+        start)
+            shift
+            cd /opt/hailstorms
+            verify_running_file $*
+            /opt/hailstorms/framework/scripts/start $*
+            run_after_script $*
+            cd -
+        ;;
+        *)
+            echo "No known action for command $1"
+        ;;
+    esac
+    exit 0
+fi
+
+echo "parameters: $*"

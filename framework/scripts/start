@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+import json
+import os
+import subprocess
+from time import sleep, time
+
+
+class HailstormData(dict):
+    _prefix = 'hailstorm_'
+
+    def __init__(self):
+        super(HailstormData, self).__init__()
+        with open('/opt/hailstorms/running/data.json') as file_handle:
+            self.data = json.load(file_handle)
+        # self.data['server_index'] = 0  # default
+        for key in os.environ.keys():
+            if key.startswith(HailstormData._prefix):
+                short_key = key.rpartition(HailstormData._prefix)[2]
+                if short_key not in self.data:
+                    self.data[short_key] = os.environ.get(key)
+                    # print("{}={}".format(key, self.data[short_key]))
+        print("-- /opt/hailstorms/running/data.json -----------------------------------------")
+        print(json.dumps(self.data, indent=2))
+        # print('init done!')
+
+    def __getattr__(self, item):
+        return self.data[item]
+
+
+def start_threads(hs):
+    processes = []
+    server_index = int(hs.server_index)
+    cores = hs.slaves_cores[server_index]
+    slaves = len(hs.slaves)
+    # print('cores: {}'.format(cores))
+    for core_idx in range(0, cores):
+        # print('starting locust {}'.format(core_idx))
+        id_add = core_idx + slaves * server_index
+        cmd_str = ['/bin/bash', '-c', 'id_add="{}"; for ((i=0;i<{};i++)); do echo "id=$((i*{}+{}+1)) S:{} T:{} C:$i CT:{} Z:{} ia:$id_add"; sleep {}; done'.format(
+            id_add,
+            hs.cores_clients[id_add],
+            hs.cores,
+            id_add,
+            server_index,
+            core_idx,
+            hs.cores_clients[id_add],
+            hs.client_delay_seconds,
+            hs.client_delay_seconds
+        )]
+        # hatch_rate = hs.cores_clients[id_add] / hs.rampup_minutes / 60
+        hatch_rate = hs.clients_per_core / hs.rampup_minutes / 60
+        run_time_seconds = (hs.rampup_minutes * 2 + hs.constant_minutes)
+        cmd_str = [
+            '/bin/bash',
+            '-c',
+            'PYTHONPATH=/opt/hailstorms ' +
+            'hailstorm_id_add={} '.format(id_add) +
+            'hailstorm_id_multiple={} '.format(hs.cores) +
+            'locust --no-web --clients {} --hatch-rate {} --num-request={} --locustfile /opt/hailstorms/{}'.format(
+                hs.cores_clients[id_add],
+                hatch_rate,
+                int(hs.total_requests / cores),
+                hs.script_filename
+            )
+        ]
+        print(cmd_str)
+        log_info(cmd_str)
+        processes.append(subprocess.Popen(cmd_str))
+        sleep(float(hs.core_delay_seconds))
+    # print('Server index = {} and cores for this server is: {}'.format(hs.server_index, hs.slaves_cores[int(hs.server_index)]))
+    for process in processes:
+        os.waitpid(process.pid, os.WNOHANG)
+    wait_seconds = float(hs.slave_delay_seconds) * float(hs.clients) * 2 + float(hs.constant_minutes * 60) + 10
+    print('framework/scripts/start is sleeping {} seconds'.format(wait_seconds))
+    log_info('sleeping {} seconds'.format(wait_seconds))
+    sleep(wait_seconds)
+    # sleep(float(hs.client_delay_seconds) * float(hs.clients))
+    print('framework/scripts/start is done waiting!')
+
+
+def log_info(data):
+    with open('/opt/hailstorms/generated/script.log', 'a') as file_handle:
+        if type(data) is list:
+            data = ', '.join(data)
+        file_handle.write(str(data) + '\n')
+
+
+if __name__ == '__main__':
+    print('== framework/scripts/start starting ==========================================')
+    try:
+        hs = HailstormData()
+        start_threads(hs)
+        # sleep(60)
+    except FileNotFoundError:
+        print("No data!")
+    print('framework/scripts/start: End of docker script.')

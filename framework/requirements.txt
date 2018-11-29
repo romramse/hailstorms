@@ -1,0 +1,6 @@
+locustio == 0.8.1
+locust
+cherrypy == 14.2.0
+boto3
+msgpack>=0.4.2
+six>=1.11.0

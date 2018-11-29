@@ -1,0 +1,14 @@
+flow:(start)
+
+(start)->(Distributor)->|ip-split|,
+|ip-split|->(LoadMachineA)[thread-split]->|threadsA|,
+|threadsA|->(thread-A1)->|threadsA-join|,
+|threadsA|->(thread-A2)->|threadsA-join|,
+|ip-split|->(LoadMachineB)->|threadsB|,
+|threadsB|->(thread-B1)->|threadsB-join|,
+|threadsB|->(thread-B2)->|threadsB-join|,
+|threadsA-join|->|ip-join|,
+|threadsB-join|->|ip-join|,
+|ip-join|->(Join logs)->(end)
+
+(start)->(Distributor)[ip-fork]->|ip-fork|, |ip-fork|->(LoadMachine-A)[thread-fork]->|threadsA|, |threadsA|->(thread-A1)->|threadsA-join|, |threadsA|->(thread-A2)->|threadsA-join|, |ip-fork|->(LoadMachine-B)->|threadsB|, |threadsB|->(thread-B1)->|threadsB-join|, |threadsB|->(thread-B2)->|threadsB-join|, |threadsA-join|->|ip-join|, |threadsB-join|->|ip-join|, |ip-join|->(Join logs)->(interpolate)->(draw graph)->(build report)->(end)

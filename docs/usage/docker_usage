@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+print_usage='yes'
+
+function args_parse() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -v)
+                verbose=$((verbose+1))
+            ;;
+            -vv)
+                verbose=2
+            ;;
+            -u|--usage)
+                print_usage='no'
+            ;;
+        esac
+        shift
+    done
+}
+
+args_parse $*
+
+if [[ "${print_usage}" == "yes" ]]; then
+cat <<STARTSTOP
+usage:  docker run -it romram/hailstorms command [options] [parameters]
+STARTSTOP
+fi
+
+cat <<STARTSTOP
+        command:
+                    shell           Dive into the core of the docker container. For them that can handle it.
+                    init            Asks the right questions and creates a simplified start script.
+                                    Please note that you must mount your start script folder of choice like this:
+                                      docker run --rm -it -v /your/path/to/help/scripts/folder:/opt/hailstorms/helpscripts romram/hailstorms init
+                    copy_samples    Copy sample files to your script folder. Used by the init command.
+                    distribute      Expects the '--script scriptfile' parameter and mounted volumes to work.
+                                    This script is normally initiated through the convenience start script 
+                                    that was created in the init stage.
+                    start           Expects mounted volumes and environment variables to function.
+                                    Normally initiated through the distribute command.
+
+        parameters:
+                    -s|--script                     The relative path to the scriptfile containing the load test tasks and config.
+                                                    NB. This has to be applied with the distribute and start command.
+                    -p|--profile named_profile      Applies the named profile from your config dict in your scriptfile.
+                                                    More than one profile can be used and are applied in order of entered.
+                                                    E.g. --profile heavy+load-env+long
+                                                        profile default will be applied first in full, then
+                                                        heavy will be applied and override any previously set params, then
+                                                        load-env will be applied and lastly
+                                                        long profile will be applied
+                    --params                        Any parameter that is used in the scriptfile. E.g. rps=100,timeout_seconds=1
+                    --after_script                  A script to be run at end of the load test. E.g. For calculating KPIs
+                    --dryrun                        Run everything except actual load. Makes it possible to see if everything
+                                                    is in order.
+                    -v                              Increase verbosity to get more logged. Can be used several times. E.g. -v -v or -vv
+STARTSTOP

@@ -1,0 +1,13 @@
+/.idea
+/.git
+/.cache/
+#  /docs/
+/generated/
+/labs/
+/running/
+/scripts/
+/venv/
+**/__pycache__
+*/**/*.pyc
+
+hailstorms.egg-info/

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+###############################
+#
+# Expected mount points
+#
+#  * hailstorms
+#
+
+function log() {
+    echo $*
+}
+
+log "== Validating helpscript folder =========================================="
+if [ -e /opt/hailstorms/helpscripts/__default__ ]; then
+    echo "You haven't mounted your help scripts folder!"
+    echo ""
+    echo "usage: docker run -rm -it -v /your/path/to/help/scripts/folder:/opt/hailstorms/helpscripts romram/hailstorms init"
+    echo ""
+    exit 1
+fi
+
+cp -b /opt/hailstorms/framework/scripts/init /opt/hailstorms/helpscripts/.
+sed -i 's_/placeholder/_/opt/hailstorms/hailstorm/_g' /opt/hailstorms/helpscripts/init
+
+echo "Success!! Script generated."
+echo "Please run the newly generated init script. It is stored in your helpscripts folder."
