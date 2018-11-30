@@ -7,4 +7,4 @@ build:
 push: build
 	docker push romram/hailstorms
 
-docker: push
+docker_hub_deploy: push

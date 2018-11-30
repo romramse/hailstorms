@@ -20,7 +20,7 @@ if [ -e /opt/hailstorms/helpscripts/__default__ ]; then
     exit 1
 fi
 
-cp -b /opt/hailstorms/framework/scripts/init /opt/hailstorms/helpscripts/.
+cat /opt/hailstorms/framework/scripts/init > /opt/hailstorms/helpscripts/init
 sed -i 's_/placeholder/_/opt/hailstorms/hailstorm/_g' /opt/hailstorms/helpscripts/init
 
 echo "Success!! Script generated."
