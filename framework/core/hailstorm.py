@@ -297,10 +297,6 @@ class CSVLogger(object):
     def __init__(self, base_filename):
         super(CSVLogger, self).__init__()
         self.filename = base_filename + '.csv'
-        try:
-            os.remove(self.filename)
-        except OSError:
-            pass
         if not os.path.isfile(self.filename):
             if not os.path.isfile(base_filename + '.lock'):
                 with open(base_filename + '.lock', 'a') as lock_fh:
