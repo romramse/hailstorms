@@ -102,7 +102,7 @@ if [[ $# -ge 1 ]]; then
             VIRTUAL_ENV='non' /opt/hailstorms/hailstorms/start $*
             run_after_script $*
         ;;
-        start)
+        local|start)
             shift
             cd /opt/hailstorms
             verify_running_file $*
@@ -118,3 +118,4 @@ if [[ $# -ge 1 ]]; then
 fi
 
 echo "parameters: $*"
+
