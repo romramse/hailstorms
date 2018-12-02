@@ -62,13 +62,22 @@ function generate_script() {
     log "== Generating start script ==============================================="
     command_params="$(docker run romram/hailstorms shell /opt/hailstorms/docs/usage/docker_usage -u)"
     echo " * ${helpscript_folder}/start"
-    docker_start="docker run --rm -it -e UID=$(id -u $USER) --volume $SSH_AUTH_SOCK:/ssh-agent --env SSH_AUTH_SOCK=/ssh-agent -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms \$*"
+    PLACEHOLDER='${port_spec}'
+    docker_start="docker run --rm -it -e UID=$(id -u $USER) ${PLACEHOLDER} --volume $SSH_AUTH_SOCK:/ssh-agent --env SSH_AUTH_SOCK=/ssh-agent -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms \$*"
     cat > ${helpscript_folder}/start <<STARTSTOP
 #!/usr/bin/env bash
 if [[ \$# -lt 1 ]]; then
     echo -e ' usage: ${helpscript_folder}/start command parameters'
     echo -e "${command_params}"
     exit 1
+fi
+STARTSTOP
+    cat >> ${helpscript_folder}/start <<'STARTSTOP'
+port_spec=''
+params_total="$*"
+
+if [ "${params_total}" == "feeder" ]; then
+    port_spec='-p 3456:3456'
 fi
 STARTSTOP
     echo "docker pull romram/hailstorms:latest" >> ${helpscript_folder}/start
