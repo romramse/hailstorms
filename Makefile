@@ -1,7 +1,11 @@
 SHELL:=/bin/bash # Use bash syntax
 
 virtualenv:
-	pip install virtualenv
+	if [ -z $(which pip) ]; then
+		echo "Please install pip3: $ sudo apt-get install python3-pip"
+		exit 1
+	fi
+	pip3 install virtualenv
 	rm -rf venv
 	( \
 		virtualenv -p python3 venv; \
