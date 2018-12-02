@@ -78,17 +78,25 @@ if [ "${match}" == "" ]; then
 fi
 
 info "-- Preparing running directory ----------------------------------------------------"
+rm -rf /opt/hailstorms/framework
 rm -rf /opt/hailstorms/running
 rm -rf /opt/hailstorms/generated
-mkdir -p /opt/hailstorms/scripts /opt/hailstorms/framework /opt/hailstorms/running
-cp -r framework/* /opt/hailstorms/framework/.
+mkdir -p /opt/hailstorms/scripts /opt/hailstorms/framework /opt/hailstorms/running /opt/hailstorms/generated
+cp -rv framework/* /opt/hailstorms/framework/.
 script_path=${script%/*}
+if [ ${verbose} > 0 ]; then
+    tree /opt/hailstorms
+fi
 info "-- copying from $script_path ------------------------------------------------------"
 mkdir -p /opt/hailstorms/${script_path}
-cp -r ${script_path}/* /opt/hailstorms/${script_path}/.
+cp -rv ${script_path}/* /opt/hailstorms/${script_path}/.
 
 export hailstorm_server_index=0
 framework/scripts/build_run_data_files $*
+
+if [ ${verbose} > 0 ]; then
+    tree /opt/hailstorms
+fi
 
 framework/scripts/start $*
 
