@@ -77,8 +77,9 @@ Let's kick of by running that; using the help scripts that also where created.
 > Since the minimal_sample.py script expects the feeder web service to be running, 
 > start it in a separate terminal window like this:
 >
->     $ make feeder
+>     $ hailstorm/start feeder
 >
+> _The service is listening to port 3456._
 
 With the web service running we can type:
 
