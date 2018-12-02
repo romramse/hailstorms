@@ -390,9 +390,13 @@ def get_running_profile_from_config_dict(_config, profile_string, params_string)
         profile_string = 'default+' + profile_string
     _running_profile['profile'] = profile_string
     for _profile in profile_string.split('+'):
-        temp_profile = _config[_profile]
-        for key in temp_profile.keys():
-            _running_profile[key] = temp_profile[key]
+        try:
+            temp_profile = _config[_profile]
+            for key in temp_profile.keys():
+                _running_profile[key] = temp_profile[key]
+        except KeyError:
+            print("The profile {} is missing".format(_profile))
+            exit(1)
     _running_profile['params'] = params_string
     for _param_key_value in params_string.split(','):
         _key_value_array = _param_key_value.split('=')
