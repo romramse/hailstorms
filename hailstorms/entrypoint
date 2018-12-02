@@ -110,6 +110,10 @@ if [[ $# -ge 1 ]]; then
             run_after_script $*
             cd -
         ;;
+        feeder)
+            shift
+            /opt/hailstorms/framework/core/feeder.py
+        ;;
         *)
             echo "No known action for command $1"
         ;;
