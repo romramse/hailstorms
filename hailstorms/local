@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+source framework/scripts/global_functions
+
+script=
+profile=default
+verbose=0
+
+function usage() {
+    echo "usage $0 -s|--script scriptfile [options]"
+    echo "           options:"
+    echo "                      -p|--profile    Named script profile to be used."
+    echo "                                      Can be used more than once."
+    echo "                      --params        Other parameters to be overridden."
+    echo "                                      E.g. --params rps=300,constant_minutes=30"
+    echo "                                      Arrays can be entered like arr=\"['first' 'second' 'third']\""
+    echo "                      -v              Verbosity on info level"
+    echo "                      -vv|-v -v       Verbosity on debug level"
+    echo "                      --dryrun        Do parsing and inspect only"
+    echo ""
+}
+
+function args_parse() {
+    while [[ $1 == -* ]]; do
+        case $1 in
+        -h|--help)
+            usage
+            exit 1
+        ;;
+        -s|--script)
+            script=$2
+            shift
+        ;;
+        -p|--profile)
+            profile="$profile+$2"
+            shift
+        ;;
+        -v)
+            let verbose+=1
+        ;;
+        -vv)
+            let verbose=2
+        ;;
+        --dryrun)
+            dryrun=true
+        ;;
+        --params)
+            params=$2
+            shift
+        ;;
+        esac
+        shift
+    done
+}
+
+args_parse $*
+
+if [ -z "$script" ]; then
+    usage
+    echo "At least the script filename ($script) has to be provided"
+    exit 1
+fi
+
+
+log "== Local script start =============================================================="
+user_name=$(whoami)
+
+mkdir -p /opt/hailstorms
+dir_owners=$(ls -ld /opt/hailstorms/|tr -s ' '|cut -d ' ' -f3,4)
+match=$(echo ${dir_owners}|grep -wo ${user_name})
+if [ "${match}" == "" ]; then
+    echo "Make sure you have the directory '/opt/hailstorms' created and set to you as owner."
+    echo ""
+    echo "Perform these tasks:    $ sudo mkdir -p /opt/hailstorms"
+    echo "                        $ sudo chown -R ${user_name}:${user_name} /opt/hailstorms"
+    echo ""
+    exit 1
+fi
+
+info "-- Preparing running directory ----------------------------------------------------"
+rm -rf /opt/hailstorms/running
+mkdir -p /opt/hailstorms/scripts /opt/hailstorms/framework /opt/hailstorms/running
+cp -r framework/* /opt/hailstorms/framework/.
+script_path=${script%/*}
+info "-- copying from $script_path ------------------------------------------------------"
+mkdir -p /opt/hailstorms/${script_path}
+cp -r ${script_path}/* /opt/hailstorms/${script_path}/.
+
+export hailstorm_server_index=0
+framework/scripts/build_run_data_files $*
+
+framework/scripts/start $*
+
+log "== Local script end ================================================================"

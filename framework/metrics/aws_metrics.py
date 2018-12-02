@@ -40,9 +40,7 @@ class AwsMetrics:
                 'Values': ['running']
             }
         ]
-        # print('Filters: {}'.format(filters))
         response = client.describe_instances(Filters=filters)
-        # print('Response: {}'.format(response))
         result_instances = []
         for reservation in response['Reservations']:
             for instance in reservation['Instances']:
@@ -55,7 +53,6 @@ class AwsMetrics:
         response = client.describe_load_balancers()
         for elb in response['LoadBalancerDescriptions']:
             name = elb['LoadBalancerName']
-            # print(name)
             for instance in elb['Instances']:
                 if instance['InstanceId'] == instance_id:
                     print('aws_metric_load_balancer_name={}'.format(elb['LoadBalancerName']))
@@ -74,7 +71,6 @@ class AwsMetrics:
             Statistics=statistics,
             Unit=unit
         )
-        # print(response)
         response['period'] = self.period
         print('aws_metric_datapoints={}'.format(len(response['Datapoints'])))
         if len(response['Datapoints']) == 0:
@@ -83,12 +79,6 @@ class AwsMetrics:
         return response
 
     def get_cpu_utilization(self, instances):
-        # dimensions = [
-        #     {
-        #         'Name': 'InstanceId',
-        #         'Value': instances[0]
-        #     }
-        # ]
         dimensions = []
         for instance_id in instances:
             if len(dimensions) > 9:
@@ -137,10 +127,11 @@ class AwsMetrics:
 
 def usage(argv):
     script_name = argv[0].rpartition('hailstorm/')[2]
-    print('     usage: {} aws-service-name [start-epoch end-epoch] [period-lenght]'.format(script_name))
+    print('     usage: {} aws-service-name region [start-epoch end-epoch] [period-lenght]'.format(script_name))
     print('         ')
     print('             aws-service-name    The name of the service that can be used to search for the service')
     print('                                 in the AWS console.')
+    print('             region              The Amazon AWS region the service is running in.')
     print('             start-epoch         A timestamp in epoch format (seconds) to mark the beginning of the metric.')
     print('             end-epoch           A timestamp in epoch format (seconds) to mark the end of the metric.')
     print('             period-length       The length, in seconds, of a period.')
@@ -151,18 +142,19 @@ def usage(argv):
 if __name__ == '__main__':
     run_path = os.path.join(os.path.dirname(__file__), '../', '../')
     # print(time.time())
-    if len(sys.argv) < 2 or sys.argv[1] == '':
+    if len(sys.argv) < 3 or sys.argv[1] == '':
         usage(sys.argv)
         exit(1)
     service_name = sys.argv[1].strip("'")
+    aws_region = sys.argv[2].strip("'")
     start_time = ''
     end_time = ''
-    if len(sys.argv) > 3:
+    if len(sys.argv) > 4:
         start_time = sys.argv[2]
         end_time = sys.argv[3]
-    if len(sys.argv) > 4:
+    if len(sys.argv) > 5:
         period = sys.argv[4]
-    aws = AwsMetrics('eu-west-2', start_time, end_time)
+    aws = AwsMetrics(aws_region, start_time, end_time)
     instances = aws.get_instances_by_name(service_name)
     if len(instances) == 0:
         print('The service: "{}" does not have any running instances.'.format(service_name))

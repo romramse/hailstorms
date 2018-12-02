@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+source framework/scripts/global_functions
+
+verbose=0
+script_file=$2
+
+function create_running_file() {
+        log "== Building run data file for script ${script_file} ============== $*"
+        export hailstorm_server_index=0
+        export hailstorm_time_start=$(date +%s)
+        cmd="python framework/core/hailstorm.py get_env_vars_string $* --output_file /opt/hailstorms/running/data --log_filename tempfile.csv"
+        if [ ${verbose} -gt 0 ]; then
+            echo "About to execute: '$cmd'"
+        fi
+        env=$(${cmd})
+        if [ ${verbose} -gt 0 ]; then
+            echo -e "Log from get_env_vars_string: \n$env"
+            cat /opt/hailstorms/running/data.env|sort
+            cat /opt/hailstorms/running/data.json
+        fi
+        env_vars=$(cat /opt/hailstorms/running/data.env|sort)
+        IFS=$'\n'   # Split on new line only
+        for row in $env_vars; do
+            declare -ax $row
+        done
+        IFS=$_IFS   # Restore default IFS
+}
+
+create_running_file $*

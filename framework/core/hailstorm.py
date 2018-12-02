@@ -73,9 +73,6 @@ class HailClient(HttpSession):
         HailClient.__threads = int(HailClient.__counter * HailClient.natural_multiple + locust.run_config['id_add'] + 1)
         # print('Client {} with thread max {} using id-add:{}, m1:{} and m2:{}'. format(self.id, HailClient.__threads, locust.run_config['id_add'], locust.run_config['id_multiple'], HailClient.natural_multiple))
         HailClient.__counter += 1
-        # if HailClient.__hs is None:
-        #     with open(run_path + '/running/data.json') as file_handle:
-        #         HailClient.__hs = json.load(file_handle)
         if HailClient.__max_timeout is None:
             HailClient.__max_timeout = locust.run_config['timeout_seconds']
 
@@ -218,7 +215,7 @@ class Hailstorm(HttpLocust):
             Hailstorm.run_config = inspect_slaves(Hailstorm.run_config)
             Hailstorm.run_config = analyse_profile(Hailstorm.run_config)
         else:
-            with open('running/data.json') as file_handle:
+            with open('/opt/hailstorms/running/data.json') as file_handle:
                 Hailstorm.run_config = json.load(file_handle)
         Hailstorm.run_config['id_add'] = int(id_add)
         Hailstorm.run_config['id_multiple'] = int(id_multiple)
@@ -300,6 +297,10 @@ class CSVLogger(object):
     def __init__(self, base_filename):
         super(CSVLogger, self).__init__()
         self.filename = base_filename + '.csv'
+        try:
+            os.remove(self.filename)
+        except OSError:
+            pass
         if not os.path.isfile(self.filename):
             if not os.path.isfile(base_filename + '.lock'):
                 with open(base_filename + '.lock', 'a') as lock_fh:
@@ -308,7 +309,7 @@ class CSVLogger(object):
                 with open(base_filename + '.lock', 'r') as lock_fh:
                     read_str = lock_fh.readline().strip()
                     print("I'll write since {} == {}".format(read_str, rand_str))
-                    print(' → The log filename is: {}'.format(self.filename))
+                    print(' - The log filename is: {}'.format(self.filename))
                 if read_str == rand_str and not os.path.isfile(self.filename):
                     open(self.filename, 'a').close()
                     self.log_row(','.join(CSVLogger.header_array))

@@ -1,0 +1,27 @@
+_IFS=$IFS   # Save default IFS
+
+function log {
+    if [[ $# -gt 0 ]]; then
+        result=`date +%Y%m%d%H%M%S`
+        while [[ $# > 0 ]]; do
+            result="$result $1"
+            shift
+        done
+        echo -e "$result"
+        return
+    fi
+    echo ''
+}
+
+function info {
+    if [[ ${verbose} > 0 ]]; then
+        log "INFO $*"
+    fi
+}
+
+function debug {
+    if [[ ${verbose} > 1 ]]; then
+        log "DEBUG $*"
+    fi
+}
+

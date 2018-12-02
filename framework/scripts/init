@@ -45,8 +45,8 @@ function make_dirs() {
 
 function copy_samples() {
     log "== Copying sample files =================================================="
-    echo "You can get sample files copied to all folders for easy setup"
-    echo "They all end with .sample"
+    echo "You can get sample files copied to all folders for easy setup."
+    echo "They all have with '_sample.' in their file names."
     read -n 1 -p "Proceed? (Y/n)" doit
     if [[ ${doit} == "" ]]; then
         doit="y"
@@ -54,8 +54,8 @@ function copy_samples() {
     if [[ ${doit,,} != "y" ]]; then
         return
     fi
-    echo "docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated -v ${ssh}:/.ssh romram/hailstorms copy_samples scripts generated .ssh"
-    docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/scripts -v ${generated}:/generated -v ${ssh}:/.ssh romram/hailstorms copy_samples scripts generated .ssh
+    echo "docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms copy_samples scripts generated"
+    docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/scripts -v ${generated}:/generated romram/hailstorms copy_samples scripts generated
 }
 
 function generate_script() {

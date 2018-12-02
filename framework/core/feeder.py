@@ -17,6 +17,7 @@ class Feeder(object):
                 web.get('/clientId/reset', self.reset_client_id),
                 web.get('/wait/{ms}', self.wait),
                 web.get('/wait/{min_ms}/{max_ms}', self.wait_between),
+                web.get('/status/{code}', self.status_code),
                 web.get('/{name}', self.handle)
             ]
         )
@@ -41,6 +42,10 @@ class Feeder(object):
         seconds = randint(min_ms, max_ms) / 1000.0
         await asyncio.sleep(seconds)
         return web.Response(text='You have waited for {} seconds.'.format(seconds))
+
+    async def status_code(self, request):
+        code = int(request.match_info.get('code', 200))
+        return web.Response(status=code, text='Http Status Code {}'.format(code))
 
     async def handle(self, request):
         name = request.match_info.get('name', "Anonymous")
