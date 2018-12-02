@@ -20,7 +20,7 @@ class HailstormData(dict):
                     self.data[short_key] = os.environ.get(key)
                     # print("{}={}".format(key, self.data[short_key]))
         print("-- /opt/hailstorms/running/data.json -----------------------------------------")
-        print(json.dumps(self.data, indent=2))
+        print(json.dumps(self.data, indent=2, sort_keys=True))
         # print('init done!')
 
     def __getattr__(self, item):
@@ -79,7 +79,7 @@ def start_threads(hs):
 
 
 def log_info(data):
-    with open('/opt/hailstorms/generated/script.log', 'a') as file_handle:
+    with open('/opt/hailstorms/generated/script.log', 'a+') as file_handle:
         if type(data) is list:
             data = ', '.join(data)
         file_handle.write(str(data) + '\n')
@@ -89,8 +89,8 @@ if __name__ == '__main__':
     print('== framework/scripts/start starting ==========================================')
     try:
         hs = HailstormData()
-        start_threads(hs)
-        # sleep(60)
     except FileNotFoundError:
         print("No data!")
+    start_threads(hs)
+        # sleep(60)
     print('framework/scripts/start: End of docker script.')
