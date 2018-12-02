@@ -62,7 +62,7 @@ function generate_script() {
     log "== Generating start script ==============================================="
     command_params="$(docker run romram/hailstorms shell /opt/hailstorms/docs/usage/docker_usage -u)"
     echo " * ${helpscript_folder}/start"
-    docker_start="docker run --rm -it -e UID=$(id -u $USER) -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms \$*"
+    docker_start="docker run --rm -it -e UID=$(id -u $USER) --volume $SSH_AUTH_SOCK:/ssh-agent --env SSH_AUTH_SOCK=/ssh-agent -v ${scripts}:/opt/hailstorms/scripts -v ${generated}:/opt/hailstorms/generated romram/hailstorms \$*"
     cat > ${helpscript_folder}/start <<STARTSTOP
 #!/usr/bin/env bash
 if [[ \$# -lt 1 ]]; then
@@ -153,7 +153,7 @@ if [[ ! "${remote}" == "missing" ]]; then
         tree -a"
     if [[ ${start_job} == 'true' ]]; then
         cmd="${cmd}
-            docker run --rm -d -e UID=1000 --name hailstorm -v ${tmp}/${script_file%%/*}:/opt/hailstorms/scripts \
+            docker run --rm -d -e UID=1000 --name hailstorm  --volume $SSH_AUTH_SOCK:/ssh-agent --env SSH_AUTH_SOCK=/ssh-agent -v ${tmp}/${script_file%%/*}:/opt/hailstorms/scripts \
             -v ${tmp}/generated:/opt/hailstorms/generated romram/hailstorms start $*"
     else
         cmd="${cmd}
