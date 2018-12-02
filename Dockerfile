@@ -26,7 +26,7 @@ RUN touch /opt/hailstorms/helpscripts/__default__
 # COPY helpscripts/ /opt/hailstorms/helpscripts/
 COPY hailstorms/ /opt/hailstorms/hailstorms/
 
-EXPOSE 22 8008
+EXPOSE 22 8008 3456
 
 ENTRYPOINT ["/opt/hailstorms/hailstorms/entrypoint"]
 
