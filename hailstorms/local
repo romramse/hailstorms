@@ -79,6 +79,7 @@ fi
 
 info "-- Preparing running directory ----------------------------------------------------"
 rm -rf /opt/hailstorms/running
+rm -rf /opt/hailstorms/generated
 mkdir -p /opt/hailstorms/scripts /opt/hailstorms/framework /opt/hailstorms/running
 cp -r framework/* /opt/hailstorms/framework/.
 script_path=${script%/*}
