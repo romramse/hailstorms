@@ -37,7 +37,7 @@ cat <<STARTSTOP
                     distribute      Expects the '--script scriptfile' parameter and mounted volumes to work.
                                     This script is normally initiated through the convenience start script 
                                     that was created in the init stage.
-                    start           Expects mounted volumes and environment variables to function.
+                    local | start   Expects mounted volumes and environment variables to function.
                                     Normally initiated through the distribute command.
 
         parameters:
