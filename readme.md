@@ -21,6 +21,9 @@ The benefits of Hailstorm is that you can load test on an arbitrary number of ma
 
 ```
 
+![Hailstorm\nlinetwo\nlinethree](docs/img/hailstorm-logo.png)
+
+toc
 
 
 

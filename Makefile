@@ -19,6 +19,10 @@ feeder:
 		fi \
 	)
 
+pdf:
+	mkdir -p docs
+	cat readme.md | markdown | wkhtmltopdf - docs/readme.pdf
+
 build:
 	docker build -t romram/hailstorms .
 

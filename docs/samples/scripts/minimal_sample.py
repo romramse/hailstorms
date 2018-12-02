@@ -44,12 +44,18 @@ class Coldfront(Hailstorm):
     since the constant_minutes argument in the very_long profile will be overridden by the
     same argument in profile additional_profile and end up as 5 minutes. This since profile
     additional_profile is applied after the very_long profile.
+    
+    The docker profile can be used if testing this script from within a docker container.
+    Make sure that your firewall accepts calls on port 3456.
     """
     config = {
         'default': {
             'host': 'http://localhost:3456',
             'rps': 10,
             'slaves': ['localhost']
+        },
+        'docker': {
+            'host': 'http://172.17.0.1:3456',
         },
         'additional_profile': {
             'timeout_seconds': 10.0,
