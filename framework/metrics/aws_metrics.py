@@ -150,10 +150,10 @@ if __name__ == '__main__':
     start_time = ''
     end_time = ''
     if len(sys.argv) > 4:
-        start_time = sys.argv[2]
-        end_time = sys.argv[3]
+        start_time = sys.argv[3]
+        end_time = sys.argv[4]
     if len(sys.argv) > 5:
-        period = sys.argv[4]
+        period = sys.argv[5]
     aws = AwsMetrics(aws_region, start_time, end_time)
     instances = aws.get_instances_by_name(service_name)
     if len(instances) == 0:
