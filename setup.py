@@ -7,12 +7,11 @@ from setuptools import find_packages, setup
 
 setup(
     name='hailstorms',
-    version='1.0.0',
+    version='1.0.5',
     description="Distributed load testing framework",
     long_description="""Hailstorm is a simplified config based, distributed load testing framework""",
     classifiers=[
         "Topic :: Software Development :: Testing :: Traffic Generation",
-        "Development Status :: 1 - Beta",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -25,12 +24,14 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
     ],
-    keywords='',
+    keywords=['loadtest', 'locustio', 'hailstorm', 'hailstorms'],
     author='Mikael Larsson',
-    author_email='',
-    url='',
+    author_email='mikael.larsson@romram.se',
+    url='https://github.com/romramse/hailstorms',
     license='MIT',
-    packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+    packages=find_packages(
+        include=['hailstorms', 'hailstorms.start'],
+        exclude=['ez_setup', 'examples', 'tests', 'graphs', 'generated', 'labs', 'scripts', 'venv']),
     include_package_data=True,
     zip_safe=False,
     install_requires=[
@@ -42,12 +43,5 @@ setup(
         "six>=1.10.0",
         "pyzmq>=16.0.2"
     ],
-    test_suite="locust.test",
-    tests_require=['mock'],
-    entry_points={
-        'console_scripts': [
-            'locust = locust.main:main',
-        ]
-    },
 )
 
