@@ -202,7 +202,7 @@ class Hailstorm(HttpLocust):
     def __only_once(self):
         print('Hailstorm only once!  ' + str(sys.argv))
         events.quitting += self.__only_once_at_the_end
-        self.run_path = os.path.join(os.path.dirname(__file__), '../', '../')
+        self.run_path = os.getcwd()
         profile = os.getenv('hailstorm_profile', 'default')
         id_add = os.getenv('hailstorm_id_add', 0)
         id_multiple = os.getenv('hailstorm_id_multiple', 1)
@@ -222,7 +222,7 @@ class Hailstorm(HttpLocust):
         Hailstorm.run_config['server_index'] = server_index
 
         Hailstorm.host = Hailstorm.run_config['host']
-        Hailstorm.logger = CSVLogger(self.run_path + 'generated/' + log_filename)
+        Hailstorm.logger = CSVLogger(self.run_path + '/generated/' + log_filename)
 
     def __only_once_at_the_end(self, *args, **kwargs):
         self.only_once_at_the_end()
@@ -239,9 +239,9 @@ class Hailstorm(HttpLocust):
     @staticmethod
     def test(Hailstorm_class, profile='default', wait=-1000):
         try:
-            run_path = os.path.join(os.path.dirname(__file__), '../', '../')
+            run_path = os.getcwd()
             try:
-                os.remove(run_path + 'generated/000_test_logger.csv')
+                os.remove(run_path + '/generated/000_test_logger.csv')
             except OSError:
                 pass
             events.request_success += Hailstorm.test_success
@@ -297,9 +297,13 @@ class CSVLogger(object):
     def __init__(self, base_filename):
         super(CSVLogger, self).__init__()
         self.filename = base_filename + '.csv'
+        try:
+            os.makedirs(base_filename.rpartition('/')[0])
+        except FileExistsError:
+            pass    # That is fine
         if not os.path.isfile(self.filename):
             if not os.path.isfile(base_filename + '.lock'):
-                with open(base_filename + '.lock', 'a') as lock_fh:
+                with open(base_filename + '.lock', '+a') as lock_fh:
                     rand_str = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
                     lock_fh.write(rand_str + '\n')
                 with open(base_filename + '.lock', 'r') as lock_fh:

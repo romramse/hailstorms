@@ -31,3 +31,10 @@ push: build
 	docker push romram/hailstorms
 
 docker_hub_deploy: push
+
+pypi:
+	python3 setup.py sdist bdist_wheel
+
+pypi_deploy: pypi
+	twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+
