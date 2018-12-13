@@ -146,7 +146,7 @@ if [[ ! "${remote}" == "missing" ]]; then
     tmp=$(ssh ${remote} mktemp -d)
     echo $tmp
     ssh ${remote} mkdir -p ${tmp}/${script_file%%/*} ${tmp}/generated ${tmp}/.ssh
-    scp ${script_file} ${remote}:${tmp}/${script_file%%/*}/.
+    scp -r ${script_file%%/*} ${remote}:${tmp}/.
     if [[ "${after_script}" != "missing" ]]; then
         scp ${after_script} ${remote}:${tmp}/${script_file%%/*}/.
     fi
